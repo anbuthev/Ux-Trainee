@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .heatmap td {
+      text-align: center;
+      font-weight: bold;
+    }
+    .severity-low { background-color: #d4edda; }
+    .severity-medium { background-color: #fff3cd; }
+    .severity-high { background-color: #f8d7da; }
+    .severity-critical { background-color: #f5c6cb; }
+    .cursor-pointer { cursor: pointer; }
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container mt-5">
+    <h1 class="mb-4">🔐 Security Dashboard</h1>
+
+    <!-- Summary KPIs -->
+    <div class="row text-center mb-4">
+      <div class="col-md-3">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5>Total Findings</h5>
+            <p class="display-6">5</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5>Critical Issues</h5>
+            <p class="display-6 text-danger">1</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5>Assets Monitored</h5>
+            <p class="display-6">3</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5>Oldest Finding</h5>
+            <p class="display-6">43 days</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Wins Section -->
+    <div class="card mb-4">
+      <div class="card-header">⚡ Quick Wins (High/Critical Severity with Fix Time ≤ 1 hour)</div>
+      <div class="card-body">
+        <ul id="quickWins" class="list-group"></ul>
+      </div>
+    </div>
+
+    <!-- Findings by Age Section -->
+    <div class="card mb-4">
+      <div class="card-header">📅 Findings by Age (Oldest First)</div>
+      <div class="card-body">
+        <ul id="findingsByAge" class="list-group"></ul>
+      </div>
+    </div>
+
+    <!-- Main Findings Table with Sorting -->
+    <div class="card mb-4">
+      <div class="card-header">🔍 Findings Table (Click headers to sort)</div>
+      <div class="card-body table-responsive">
+        <table id="findingsTable" class="table table-bordered">
+          <thead class="table-light">
+            <tr>
+              <th class="cursor-pointer" onclick="sortTable(0)">Asset</th>
+              <th>Finding</th>
+              <th class="cursor-pointer" onclick="sortTable(2)">Severity</th>
+              <th class="cursor-pointer" onclick="sortTable(3)">Finding Date</th>
+              <th class="cursor-pointer" onclick="sortTable(4)">Fix Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>compute-machine1</td>
+              <td>Open to public access on port 22</td>
+              <td class="severity-low">Low</td>
+              <td>2025-04-08</td>
+              <td>15 mins</td>
+            </tr>
+            <tr>
+              <td>compute-machine2</td>
+              <td>Open public access on insecure port 80</td>
+              <td class="severity-medium">Medium</td>
+              <td>2025-04-09</td>
+              <td>30 mins</td>
+            </tr>
+            <tr>
+              <td>printer1</td>
+              <td>Wifi access is openly available</td>
+              <td class="severity-high">High</td>
+              <td>2025-04-05</td>
+              <td>1 hour</td>
+            </tr>
+            <tr>
+              <td>printer1</td>
+              <td>The device is always on</td>
+              <td class="severity-critical">Critical</td>
+              <td>2025-04-02</td>
+              <td>3 hours</td>
+            </tr>
+            <tr>
+              <td>compute-machine2</td>
+              <td>Allows connecting external USB storage devices</td>
+              <td class="severity-low">Low</td>
+              <td>2025-04-01</td>
+              <td>20 mins</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Heatmap Widget -->
+    <div class="card">
+      <div class="card-header">📊 Severity Heatmap by Asset</div>
+      <div class="card-body">
+        <table class="table table-bordered heatmap">
+          <thead class="table-light">
+            <tr>
+              <th>Asset</th>
+              <th>Low</th>
+              <th>Medium</th>
+              <th>High</th>
+              <th>Critical</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>compute-machine1</td>
+              <td class="severity-low">1</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>compute-machine2</td>
+              <td class="severity-low">1</td>
+              <td class="severity-medium">1</td>
+              <td>0</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>printer1</td>
+              <td>0</td>
+              <td>0</td>
+              <td class="severity-high">1</td>
+              <td class="severity-critical">1</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function parseTime(str) {
+      const match = str.match(/(\d+)/);
+      return match ? parseInt(match[1]) : Infinity;
+    }
+
+    function sortTable(columnIndex) {
+      const table = document.getElementById("findingsTable");
+      const rows = Array.from(table.tBodies[0].rows);
+      const sorted = rows.sort((a, b) => {
+        const valA = a.cells[columnIndex].innerText;
+        const valB = b.cells[columnIndex].innerText;
+        if (columnIndex === 3) return new Date(valA) - new Date(valB);
+        if (columnIndex === 4) return parseTime(valA) - parseTime(valB);
+        return valA.localeCompare(valB);
+      });
+      rows.forEach(row => table.tBodies[0].appendChild(row));
+    }
+
+    function loadWidgets() {
+      const rows = document.querySelectorAll("#findingsTable tbody tr");
+      const quickWins = document.getElementById("quickWins");
+      const findingsByAge = document.getElementById("findingsByAge");
+      const findings = [];
+
+      rows.forEach(row => {
+        const asset = row.cells[0].innerText;
+        const finding = row.cells[1].innerText;
+        const severity = row.cells[2].innerText;
+        const date = row.cells[3].innerText;
+        const fix = row.cells[4].innerText;
+
+        if ((severity === "High" || severity === "Critical") && parseTime(fix) <= 60) {
+          const item = document.createElement("li");
+          item.className = "list-group-item";
+          item.innerText = `${asset}: ${finding} (${severity}, ${fix})`;
+          quickWins.appendChild(item);
+        }
+
+        findings.push({ asset, finding, severity, date, fix });
+      });
+
+      findings.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(f => {
+        const item = document.createElement("li");
+        item.className = "list-group-item";
+        item.innerText = `${f.date} - ${f.asset}: ${f.finding} (${f.severity})`;
+        findingsByAge.appendChild(item);
+      });
+    }
+
+    window.onload = loadWidgets;
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
